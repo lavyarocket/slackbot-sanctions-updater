@@ -23,7 +23,7 @@ class LambdaStack(Stack):
         environment={
             "S3_BUCKET": s3_bucket.bucket_name,
             "S3_KEY": "sdn/latest.json",
-            "SLACK_TOKEN": "xoxb-9049134471330-9062064648913-gqGHPC7ko3AdUKDIn2pw2nHH",
+            "SLACK_TOKEN": "..",
             "SLACK_CHANNEL": "#alerts"
         },
         timeout=Duration.minutes(5),
