@@ -39,7 +39,7 @@ class LambdaStack(Stack):
                 # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
                 raise e
 
-            return get_secret_value_response['SecretString']
+            return get_secret_value_response['SecretString']['SLACK_TOKEN']
 
 
         self.lambda_fn = _lambda.DockerImageFunction(
