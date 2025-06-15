@@ -10,13 +10,37 @@ from aws_cdk import (
 from constructs import Construct
 import os
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
+import boto3
+from botocore.exceptions import ClientError
 
 class LambdaStack(Stack):
     def __init__(self, scope: Construct, id: str, s3_bucket: s3.IBucket, **kwargs):
         super().__init__(scope, id, **kwargs)
 
         # Use environment variable for SLACK_TOKEN, fallback to empty string if not set
-        slack_token = os.environ.get("SLACK_TOKEN", "")
+        def get_secret():
+
+            secret_name = "sanctions-bot-slack-token"
+            region_name = "us-east-1"
+
+            # Create a Secrets Manager client
+            session = boto3.session.Session()
+            client = session.client(
+                service_name='secretsmanager',
+                region_name=region_name
+            )
+
+            try:
+                get_secret_value_response = client.get_secret_value(
+                    SecretId=secret_name
+                )
+            except ClientError as e:
+                # For a list of exceptions thrown, see
+                # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+                raise e
+
+            return get_secret_value_response['SecretString']
+
 
         self.lambda_fn = _lambda.DockerImageFunction(
             self, "SDNSyncFunction",
@@ -26,7 +50,7 @@ class LambdaStack(Stack):
             environment={
             "S3_BUCKET": s3_bucket.bucket_name,
             "S3_KEY": "sdn/latest.json",
-            "SLACK_TOKEN": slack_token,
+            "SLACK_TOKEN": get_secret(),
             "SLACK_CHANNEL": "#alerts"
             },
             timeout=Duration.minutes(5),
