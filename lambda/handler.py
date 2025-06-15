@@ -15,7 +15,6 @@ S3 = boto3.client("s3")
 SLACK = WebClient(token=SLACK_TOKEN)
 
 def fetch_sanctions():
-    # Example: OFAC SDN list
     url = "https://www.treasury.gov/ofac/downloads/sdn.csv"
     resp = requests.get(url)
     resp.raise_for_status()
@@ -40,7 +39,7 @@ def notify_slack(records, delta, duration):
     url = S3.generate_presigned_url(
         "get_object",
         Params={"Bucket": BUCKET, "Key": KEY},
-        ExpiresIn=3600
+        ExpiresIn=86400
     )
 
     text = (

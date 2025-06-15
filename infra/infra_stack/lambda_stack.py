@@ -15,18 +15,21 @@ class LambdaStack(Stack):
     def __init__(self, scope: Construct, id: str, s3_bucket: s3.IBucket, **kwargs):
         super().__init__(scope, id, **kwargs)
 
+        # Use environment variable for SLACK_TOKEN, fallback to empty string if not set
+        slack_token = os.environ.get("SLACK_TOKEN", "")
+
         self.lambda_fn = _lambda.DockerImageFunction(
-        self, "SDNSyncFunction",
-        code=_lambda.DockerImageCode.from_image_asset(
+            self, "SDNSyncFunction",
+            code=_lambda.DockerImageCode.from_image_asset(
             os.path.join(os.path.dirname(__file__), "../../lambda")
-        ),
-        environment={
+            ),
+            environment={
             "S3_BUCKET": s3_bucket.bucket_name,
             "S3_KEY": "sdn/latest.json",
-            "SLACK_TOKEN": "..",
+            "SLACK_TOKEN": slack_token,
             "SLACK_CHANNEL": "#alerts"
-        },
-        timeout=Duration.minutes(5),
+            },
+            timeout=Duration.minutes(5),
         )
        
         # Grant permissions
