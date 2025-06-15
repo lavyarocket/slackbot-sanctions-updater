@@ -2,7 +2,7 @@
 import os
 from aws_cdk import App, Environment
 from infra_stack.s3_stack import S3Stack
-from infra_stack.lambda_stack import LambdaStack
+from infra.infra_stack.fetch_lambda_stack import LambdaStack
 
 app = App()
 

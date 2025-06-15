@@ -1,0 +1,9 @@
+aws-cdk-lib
+constructs
+boto3
+aws-cdk.aws-lambda-python-alpha
+requests
+slack_sdk
+
+
+

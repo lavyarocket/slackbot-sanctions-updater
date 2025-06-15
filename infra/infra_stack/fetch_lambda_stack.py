@@ -45,7 +45,7 @@ class LambdaStack(Stack):
         self.lambda_fn = _lambda.DockerImageFunction(
             self, "SDNSyncFunction",
             code=_lambda.DockerImageCode.from_image_asset(
-            os.path.join(os.path.dirname(__file__), "../../lambda")
+            os.path.join(os.path.dirname(__file__), "../../fetch_lambda")
             ),
             environment={
             "S3_BUCKET": s3_bucket.bucket_name,
