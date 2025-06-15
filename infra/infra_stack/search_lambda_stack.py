@@ -17,7 +17,7 @@ class CheckSdnStack(Stack):
         self.lambda_fn = _lambda.DockerImageFunction(
             self, "CheckSdnLambda",
             code=_lambda.DockerImageCode.from_image_asset(
-            os.path.join(os.path.dirname(__file__), "../../check_sdn")
+            os.path.join(os.path.dirname(__file__), "../../search_lambda")
             ),
             environment={
             "SDN_BUCKET": s3_bucket.bucket_name,
