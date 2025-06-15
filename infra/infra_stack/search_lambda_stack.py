@@ -10,8 +10,8 @@ from constructs import Construct
 import os
 
 class CheckSdnStack(Stack):
-    def __init__(self, scope: Construct, s3_bucket: s3.IBucket ,construct_id: str, **kwargs):
-        super().__init__(scope, construct_id, **kwargs)
+    def __init__(self, scope: Construct, id: str, s3_bucket: s3.IBucket, **kwargs):
+        super().__init__(scope, id, **kwargs)
 
 
         self.lambda_fn = _lambda.DockerImageFunction(
