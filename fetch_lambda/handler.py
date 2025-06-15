@@ -4,6 +4,8 @@ import time
 import requests
 from slack_sdk import WebClient
 import boto3
+import csv
+import io
 
 # Config
 BUCKET = os.environ["S3_BUCKET"]
@@ -18,21 +20,39 @@ def fetch_sanctions():
     url = "https://www.treasury.gov/ofac/downloads/sdn.csv"
     resp = requests.get(url)
     resp.raise_for_status()
-    return resp.text.splitlines()
+    return resp.text
+
+def parse_csv_to_json(csv_text):
+    reader = csv.reader(io.StringIO(csv_text))
+    sdn_list = []
+    for row in reader:
+        if len(row) < 4:
+            continue
+        sdn_list.append({
+            "id": row[0],
+            "name": row[1].strip('"'),
+            "type": row[2].strip('"'),
+            "program": row[3].strip('"'),
+        })
+    return sdn_list
 
 def load_previous_list():
     try:
         response = S3.get_object(Bucket=BUCKET, Key=KEY)
-        return response["Body"].read().decode("utf-8").splitlines()
+        data = response["Body"].read().decode("utf-8")
+        return json.loads(data)
     except S3.exceptions.NoSuchKey:
         return []
 
-def save_to_s3(data):
-    S3.put_object(Bucket=BUCKET, Key=KEY, Body="\n".join(data))
+def save_to_s3_json(data):
+    S3.put_object(Bucket=BUCKET, Key=KEY, Body=json.dumps(data, indent=2), ContentType="application/json")
 
 def compare_lists(old, new):
-    added = [line for line in new if line not in old]
-    removed = [line for line in old if line not in new]
+    # Compare by 'id' and 'name'
+    old_set = set((entry["id"], entry["name"]) for entry in old)
+    new_set = set((entry["id"], entry["name"]) for entry in new)
+    added = [entry for entry in new if (entry["id"], entry["name"]) not in old_set]
+    removed = [entry for entry in old if (entry["id"], entry["name"]) not in new_set]
     return {"added": added, "removed": removed}
 
 def notify_slack(records, delta, duration):
@@ -55,12 +75,13 @@ def notify_slack(records, delta, duration):
 def handler(event, context):
     start = time.time()
 
-    current_list = fetch_sanctions()
+    csv_text = fetch_sanctions()
+    current_list = parse_csv_to_json(csv_text)
     previous_list = load_previous_list()
 
     delta = compare_lists(previous_list, current_list)
 
-    save_to_s3(current_list)
+    save_to_s3_json(current_list)
 
     duration = time.time() - start
 

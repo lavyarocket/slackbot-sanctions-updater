@@ -41,7 +41,12 @@ def format_slack_blocks(results, query):
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"*Name:* {entry.get('name')}\n*ID:* {entry.get('id', 'N/A')}\n*Reason:* {entry.get('reason', 'N/A')}"
+                "text": (
+                    f"*Name:* {entry.get('name')}\n"
+                    f"*ID:* {entry.get('id', 'N/A')}\n"
+                    f"*Type:* {entry.get('type', 'N/A')}\n"
+                    f"*Program:* {entry.get('program', 'N/A')}"
+                )
             }
         })
         blocks.append({"type": "divider"})
