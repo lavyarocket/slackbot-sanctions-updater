@@ -11,7 +11,8 @@ class S3Stack(Stack):
         super().__init__(scope, construct_id, **kwargs)
         self.bucket = s3.Bucket(self, "SanctionsDataBucket",
             versioned=True,
-            removal_policy=RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY,
+            block_public_access=s3.BlockPublicAccess.NONE
         )
         self.bucket.add_to_resource_policy(
             iam.PolicyStatement(
