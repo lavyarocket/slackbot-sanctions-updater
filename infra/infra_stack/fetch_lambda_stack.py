@@ -65,8 +65,8 @@ class LambdaStack(Stack):
             resources=["*"]
         ))
 
-        # EventBridge trigger
-        rule = events.Rule(self, "DailySDNTrigger",
-            schedule=events.Schedule.cron(minute="0", hour="15")  # UTC
+        # EventBridge trigger: run at 8am, 4pm, and 11pm PDT (which is 15, 23, and 6 UTC)
+        rule = events.Rule(self, "ThreeTimesDailySDNTrigger",
+            schedule=events.Schedule.cron(minute="0", hour="15,23,6")  # UTC times
         )
         rule.add_target(targets.LambdaFunction(self.lambda_fn))
