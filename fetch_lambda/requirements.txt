@@ -5,5 +5,3 @@ aws-cdk.aws-lambda-python-alpha
 requests
 slack_sdk
 matplotlib
-
-
