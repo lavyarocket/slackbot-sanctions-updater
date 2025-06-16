@@ -12,6 +12,7 @@ import os
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
 import boto3
 from botocore.exceptions import ClientError
+from aws_cdk import aws_apigateway as apigateway
 
 class LambdaStack(Stack):
     def __init__(self, scope: Construct, id: str, s3_bucket: s3.IBucket, **kwargs):
@@ -70,3 +71,16 @@ class LambdaStack(Stack):
             schedule=events.Schedule.cron(minute="0", hour="15,23,6")  # UTC times
         )
         rule.add_target(targets.LambdaFunction(self.lambda_fn))
+        
+        
+        # Create an API Gateway with a /trigger resource that invokes the Lambda
+        api = apigateway.RestApi(
+            self, "SDNSyncApiGateway",
+            rest_api_name="SDNSyncApi"
+        )
+
+        trigger_resource = api.root.add_resource("trigger")
+        trigger_resource.add_method(
+            "POST",  # Slack slash commands send POST requests
+            apigateway.LambdaIntegration(self.lambda_fn)
+        )
