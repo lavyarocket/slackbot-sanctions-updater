@@ -124,22 +124,28 @@ def compute_diff(new_list, old_list):
     return additions, deletions
 
 def update_history_and_diffs(new_list):
+    # Load previous history (list of dicts with 'timestamp' and 'count')
     history = load_json_from_s3(SANCTIONS_HISTORY_KEY)
     diffs = load_json_from_s3(SANCTIONS_DIFFS_KEY)
+
+    # Get previous list for diffing
     old_list = history[-1]["sanctions"] if history else []
 
+    # Compute additions and deletions
     additions, deletions = compute_diff(new_list, old_list)
 
+    # Append to history (keep only last 7)
     history.append({
         "timestamp": datetime.utcnow().isoformat(),
         "sanctions": new_list
     })
     history = history[-7:]
 
+    # Store only counts for charting
     diffs.append({
         "timestamp": datetime.utcnow().isoformat(),
-        "additions": additions,
-        "deletions": deletions
+        "additions_count": len(additions),
+        "deletions_count": len(deletions)
     })
     diffs = diffs[-7:]
 
@@ -150,16 +156,14 @@ def update_history_and_diffs(new_list):
 
 def generate_chart(diffs):
     # Always show last 7 lookups, even if some are empty
-    # Show date and time (up to minutes)
     dates = [(d['timestamp'][:16] if 'timestamp' in d else '') for d in diffs]
-    additions = [len(d.get('additions', [])) for d in diffs]
-    deletions = [len(d.get('deletions', [])) for d in diffs]
+    additions = [d.get('additions_count', 0) for d in diffs]
+    deletions = [d.get('deletions_count', 0) for d in diffs]
 
     plt.figure(figsize=(10, 5))
     x = range(len(dates))
     width = 0.35
 
-    # Both bars are positive, just different colors
     plt.bar([i - width/2 for i in x], additions, width=width, color='green', label='Additions')
     plt.bar([i + width/2 for i in x], deletions, width=width, color='red', label='Deletions')
     plt.xticks(x, dates, rotation=30, ha='right')
@@ -168,7 +172,7 @@ def generate_chart(diffs):
     plt.title('Sanctions List Changes (Last 7 Lookups)')
     plt.legend()
     plt.tight_layout()
-    plt.ylim(bottom=0)  # y-axis starts at 0
+    plt.ylim(bottom=0)
 
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
