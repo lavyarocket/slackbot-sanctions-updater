@@ -58,6 +58,8 @@ def compare_lists(old, new):
     removed = [entry for entry in old if (entry["id"], entry["name"]) not in new_set]
     return {"added": added, "removed": removed}
 
+
+
 def notify_slack(records, delta, duration, chart_buf=None):
     url = S3.generate_presigned_url(
         "get_object",
@@ -76,17 +78,28 @@ def notify_slack(records, delta, duration, chart_buf=None):
     response = SLACK.chat_postMessage(channel=SLACK_CHANNEL, text=text)
     ts = response["ts"] if response["ok"] else None
 
-
     if chart_buf and ts:
+        chart_key = f"sdn/sanctions_changes_{int(time.time())}.png"
         chart_buf.seek(0)
-        SLACK.files_upload(
-            channels=SLACK_CHANNEL,
-            file=chart_buf,
-            filename="sanctions_changes.png",
-            title="Sanctions List Changes (Last 7 Lookups)",
-            initial_comment="Sanctions list changes over the last 7 lookups.",
-            thread_ts=ts
+        S3.put_object(Bucket=BUCKET, Key=chart_key, Body=chart_buf, ContentType="image/png")
+        chart_url = S3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": BUCKET, "Key": chart_key},
+            ExpiresIn=86400
         )
+        SLACK.chat_postMessage(
+            channel=SLACK_CHANNEL,
+            thread_ts=ts,
+            blocks=[
+                {
+                    "type": "image",
+                    "image_url": chart_url,
+                    "alt_text": "Sanctions List Changes (Last 7 Lookups)"
+                }
+            ],
+            text="Sanctions list changes over the last 7 lookups."
+        )
+
 
 
 def load_json_from_s3(key):
