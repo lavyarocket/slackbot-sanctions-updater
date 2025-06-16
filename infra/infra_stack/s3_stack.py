@@ -12,7 +12,12 @@ class S3Stack(Stack):
         self.bucket = s3.Bucket(self, "SanctionsDataBucket",
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
-            block_public_access=s3.BlockPublicAccess.NONE
+            block_public_access=s3.BlockPublicAccess(
+                block_public_acls=False,
+                ignore_public_acls=False,
+                block_public_policy=False,
+                restrict_public_buckets=False
+            )
         )
         self.bucket.add_to_resource_policy(
             iam.PolicyStatement(
