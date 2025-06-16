@@ -74,11 +74,9 @@ def notify_slack(records, delta, duration, chart_buf=None):
         f"> *Run Time:* `{duration:.2f}`s\n"
         f"<{url}|📄 View latest list>"
     )
+    SLACK.chat_postMessage(channel=SLACK_CHANNEL, text=text)
 
-    response = SLACK.chat_postMessage(channel=SLACK_CHANNEL, text=text)
-    ts = response["ts"] if response["ok"] else None
-
-    if chart_buf and ts:
+    if chart_buf:
         chart_key = f"sdn/sanctions_changes_{int(time.time())}.png"
         chart_buf.seek(0)
         S3.put_object(Bucket=BUCKET, Key=chart_key, Body=chart_buf, ContentType="image/png")
@@ -89,7 +87,6 @@ def notify_slack(records, delta, duration, chart_buf=None):
         )
         SLACK.chat_postMessage(
             channel=SLACK_CHANNEL,
-            thread_ts=ts,
             blocks=[
                 {
                     "type": "image",
@@ -149,14 +146,20 @@ def update_history_and_diffs(new_list):
     return diffs
 
 def generate_chart(diffs):
-    dates = [d['timestamp'][:10] for d in diffs]
-    additions = [len(d['additions']) for d in diffs]
-    deletions = [len(d['deletions']) for d in diffs]
+    # Always show last 7 lookups, even if some are empty
+    # Show date and time (up to minutes)
+    dates = [(d['timestamp'][:16] if 'timestamp' in d else '') for d in diffs]
+    additions = [len(d.get('additions', [])) for d in diffs]
+    deletions = [len(d.get('deletions', [])) for d in diffs]
 
-    plt.figure(figsize=(8, 4))
-    plt.bar(dates, additions, color='green', label='Additions')
-    plt.bar(dates, deletions, color='red', label='Deletions', bottom=additions)
-    plt.xlabel('Date')
+    plt.figure(figsize=(10, 5))
+    x = range(len(dates))
+    width = 0.35
+
+    plt.bar([i - width/2 for i in x], additions, width=width, color='green', label='Additions')
+    plt.bar([i + width/2 for i in x], deletions, width=width, color='red', label='Deletions')
+    plt.xticks(x, dates, rotation=30, ha='right')
+    plt.xlabel('Date & Time (UTC)')
     plt.ylabel('Count')
     plt.title('Sanctions List Changes (Last 7 Lookups)')
     plt.legend()
