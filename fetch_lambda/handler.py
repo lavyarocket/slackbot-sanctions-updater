@@ -115,41 +115,21 @@ def load_json_from_s3(key):
 def save_json_to_s3(data, key):
     S3.put_object(Bucket=BUCKET, Key=key, Body=json.dumps(data).encode("utf-8"))
 
-def compute_diff(new_list, old_list):
-    # Compare by 'id' and 'name'
-    old_set = set((entry["id"], entry["name"]) for entry in old_list)
-    new_set = set((entry["id"], entry["name"]) for entry in new_list)
-    additions = [entry for entry in new_list if (entry["id"], entry["name"]) not in old_set]
-    deletions = [entry for entry in old_list if (entry["id"], entry["name"]) not in new_set]
-    return additions, deletions
 
-def update_history_and_diffs(new_list):
-    # Load previous history (list of dicts with 'timestamp' and 'count')
-    history = load_json_from_s3(SANCTIONS_HISTORY_KEY)
-    diffs = load_json_from_s3(SANCTIONS_DIFFS_KEY)
-
-    # Get previous list for diffing
-    old_list = history[-1]["sanctions"] if history else []
+def update_history_and_diffs(delta):
 
     # Compute additions and deletions
-    additions, deletions = compute_diff(new_list, old_list)
+    additions, deletions = len(delta["added"]), len(delta["removed"])
 
-    # Append to history (keep only last 7)
-    history.append({
-        "timestamp": datetime.utcnow().isoformat(),
-        "sanctions": new_list
-    })
-    history = history[-7:]
 
     # Store only counts for charting
     diffs.append({
         "timestamp": datetime.utcnow().isoformat(),
-        "additions_count": len(additions),
-        "deletions_count": len(deletions)
+        "additions_count": additions,
+        "deletions_count": deletions
     })
     diffs = diffs[-7:]
-
-    save_json_to_s3(history, SANCTIONS_HISTORY_KEY)
+    
     save_json_to_s3(diffs, SANCTIONS_DIFFS_KEY)
 
     return diffs
@@ -191,7 +171,7 @@ def handler(event, context):
 
     save_to_s3_json(current_list)
 
-    diffs = update_history_and_diffs(current_list)
+    diffs = update_history_and_diffs(delta)
     chart_buf = generate_chart(diffs)
     duration = time.time() - start
 
