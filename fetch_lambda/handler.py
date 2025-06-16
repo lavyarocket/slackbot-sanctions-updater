@@ -9,13 +9,11 @@ import io
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-# Config
+
 BUCKET = os.environ["S3_BUCKET"]
 KEY = os.environ["S3_KEY"]
 SLACK_TOKEN = os.environ["SLACK_TOKEN"]
 SLACK_CHANNEL = os.environ["SLACK_CHANNEL"]
-
-# New keys for history/diffs
 SANCTIONS_HISTORY_KEY = os.environ.get("SANCTIONS_HISTORY_KEY", "sdn/sanctions_history.json")
 SANCTIONS_DIFFS_KEY = os.environ.get("SANCTIONS_DIFFS_KEY", "sdn/sanctions_diffs.json")
 
@@ -75,11 +73,10 @@ def notify_slack(records, delta, duration, chart_buf=None):
         f"<{url}|📄 View latest list>"
     )
 
-    # Send the message and get the timestamp
     response = SLACK.chat_postMessage(channel=SLACK_CHANNEL, text=text)
     ts = response["ts"] if response["ok"] else None
 
-    # If chart_buf is provided, upload chart to Slack as a reply to the message
+
     if chart_buf and ts:
         chart_buf.seek(0)
         SLACK.files_upload(
@@ -91,7 +88,6 @@ def notify_slack(records, delta, duration, chart_buf=None):
             thread_ts=ts
         )
 
-# --- New functionality below ---
 
 def load_json_from_s3(key):
     try:
@@ -170,12 +166,10 @@ def handler(event, context):
 
     save_to_s3_json(current_list)
 
-    # --- New: update history/diffs and generate chart ---
     diffs = update_history_and_diffs(current_list)
     chart_buf = generate_chart(diffs)
     duration = time.time() - start
 
-    # Notify Slack with chart (chart will be posted as a reply to the message)
     notify_slack(len(current_list), delta, duration, chart_buf=chart_buf)
 
     return {
