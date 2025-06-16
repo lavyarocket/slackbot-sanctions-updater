@@ -79,12 +79,16 @@ def notify_slack(records, delta, duration, chart_buf=None):
     if chart_buf:
         chart_key = f"sdn/sanctions_changes_{int(time.time())}.png"
         chart_buf.seek(0)
-        S3.put_object(Bucket=BUCKET, Key=chart_key, Body=chart_buf, ContentType="image/png")
-        chart_url = S3.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": BUCKET, "Key": chart_key},
-            ExpiresIn=86400
+        # Upload with public-read ACL
+        S3.put_object(
+            Bucket=BUCKET,
+            Key=chart_key,
+            Body=chart_buf,
+            ContentType="image/png",
+            ACL="public-read"
         )
+        # Construct the public S3 URL
+        chart_url = f"https://{BUCKET}.s3.amazonaws.com/{chart_key}"
         SLACK.chat_postMessage(
             channel=SLACK_CHANNEL,
             blocks=[
@@ -156,6 +160,7 @@ def generate_chart(diffs):
     x = range(len(dates))
     width = 0.35
 
+    # Both bars are positive, just different colors
     plt.bar([i - width/2 for i in x], additions, width=width, color='green', label='Additions')
     plt.bar([i + width/2 for i in x], deletions, width=width, color='red', label='Deletions')
     plt.xticks(x, dates, rotation=30, ha='right')
@@ -164,6 +169,7 @@ def generate_chart(diffs):
     plt.title('Sanctions List Changes (Last 7 Lookups)')
     plt.legend()
     plt.tight_layout()
+    plt.ylim(bottom=0)  # y-axis starts at 0
 
     buf = io.BytesIO()
     plt.savefig(buf, format='png')

@@ -12,3 +12,14 @@ class S3Stack(Stack):
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY
         )
+        self.bucket.add_to_resource_policy(
+            s3.PolicyStatement(
+                actions=["s3:GetObject"],
+                resources=[f"{self.bucket.bucket_arn}/*"],
+                principals=[s3.ArnPrincipal("*")],
+                effect=s3.Effect.ALLOW,
+                conditions={
+                    "StringEquals": {"s3:acl": "public-read"}
+                }
+            )
+        )
