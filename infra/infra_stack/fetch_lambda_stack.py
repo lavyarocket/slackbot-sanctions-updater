@@ -54,8 +54,8 @@ class LambdaStack(Stack):
             "SLACK_CHANNEL": "#alerts"
             },
             timeout=Duration.minutes(5),
+            memory_size=512,
         )
-       
         # Grant permissions
         s3_bucket.grant_read_write(self.lambda_fn)
 
