@@ -4,7 +4,7 @@ FROM public.ecr.aws/lambda/python:3.11
 COPY . ${LAMBDA_TASK_ROOT}
 
 # Install dependencies
-RUN apt-get update && apt-get install -y build-essential
+RUN yum install -y gcc gcc-c++ make
 RUN pip install -r requirements.txt
 
 # Set the CMD to your handler (filename.function)
