@@ -18,9 +18,6 @@ class S3Stack(Stack):
                 actions=["s3:GetObject"],
                 resources=[f"{self.bucket.bucket_arn}/*"],
                 principals=[iam.ArnPrincipal("*")],
-                effect=iam.Effect.ALLOW,
-                conditions={
-                    "StringEquals": {"s3:acl": "public-read"}
-                }
+                effect=iam.Effect.ALLOW
             )
         )

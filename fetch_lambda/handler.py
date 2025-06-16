@@ -84,8 +84,7 @@ def notify_slack(records, delta, duration, chart_buf=None):
             Bucket=BUCKET,
             Key=chart_key,
             Body=chart_buf,
-            ContentType="image/png",
-            ACL="public-read"
+            ContentType="image/png"
         )
         # Construct the public S3 URL
         chart_url = f"https://{BUCKET}.s3.amazonaws.com/{chart_key}"
