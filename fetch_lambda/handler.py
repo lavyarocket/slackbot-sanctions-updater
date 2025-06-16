@@ -6,12 +6,18 @@ from slack_sdk import WebClient
 import boto3
 import csv
 import io
+import matplotlib.pyplot as plt
+from datetime import datetime
 
 # Config
 BUCKET = os.environ["S3_BUCKET"]
 KEY = os.environ["S3_KEY"]
 SLACK_TOKEN = os.environ["SLACK_TOKEN"]
 SLACK_CHANNEL = os.environ["SLACK_CHANNEL"]
+
+# New keys for history/diffs
+SANCTIONS_HISTORY_KEY = os.environ.get("SANCTIONS_HISTORY_KEY", "sdn/sanctions_history.json")
+SANCTIONS_DIFFS_KEY = os.environ.get("SANCTIONS_DIFFS_KEY", "sdn/sanctions_diffs.json")
 
 S3 = boto3.client("s3")
 SLACK = WebClient(token=SLACK_TOKEN)
@@ -48,14 +54,13 @@ def save_to_s3_json(data):
     S3.put_object(Bucket=BUCKET, Key=KEY, Body=json.dumps(data, indent=2), ContentType="application/json")
 
 def compare_lists(old, new):
-    # Compare by 'id' and 'name'
     old_set = set((entry["id"], entry["name"]) for entry in old)
     new_set = set((entry["id"], entry["name"]) for entry in new)
     added = [entry for entry in new if (entry["id"], entry["name"]) not in old_set]
     removed = [entry for entry in old if (entry["id"], entry["name"]) not in new_set]
     return {"added": added, "removed": removed}
 
-def notify_slack(records, delta, duration):
+def notify_slack(records, delta, duration, chart_buf=None):
     url = S3.generate_presigned_url(
         "get_object",
         Params={"Bucket": BUCKET, "Key": KEY},
@@ -70,7 +75,89 @@ def notify_slack(records, delta, duration):
         f"<{url}|📄 View latest list>"
     )
 
-    SLACK.chat_postMessage(channel=SLACK_CHANNEL, text=text)
+    # Send the message and get the timestamp
+    response = SLACK.chat_postMessage(channel=SLACK_CHANNEL, text=text)
+    ts = response["ts"] if response["ok"] else None
+
+    # If chart_buf is provided, upload chart to Slack as a reply to the message
+    if chart_buf and ts:
+        chart_buf.seek(0)
+        SLACK.files_upload(
+            channels=SLACK_CHANNEL,
+            file=chart_buf,
+            filename="sanctions_changes.png",
+            title="Sanctions List Changes (Last 7 Lookups)",
+            initial_comment="Sanctions list changes over the last 7 lookups.",
+            thread_ts=ts
+        )
+
+# --- New functionality below ---
+
+def load_json_from_s3(key):
+    try:
+        obj = S3.get_object(Bucket=BUCKET, Key=key)
+        return json.loads(obj['Body'].read())
+    except S3.exceptions.NoSuchKey:
+        return []
+    except Exception as e:
+        print(f"Error loading {key}: {e}")
+        return []
+
+def save_json_to_s3(data, key):
+    S3.put_object(Bucket=BUCKET, Key=key, Body=json.dumps(data).encode("utf-8"))
+
+def compute_diff(new_list, old_list):
+    # Compare by 'id' and 'name'
+    old_set = set((entry["id"], entry["name"]) for entry in old_list)
+    new_set = set((entry["id"], entry["name"]) for entry in new_list)
+    additions = [entry for entry in new_list if (entry["id"], entry["name"]) not in old_set]
+    deletions = [entry for entry in old_list if (entry["id"], entry["name"]) not in new_set]
+    return additions, deletions
+
+def update_history_and_diffs(new_list):
+    history = load_json_from_s3(SANCTIONS_HISTORY_KEY)
+    diffs = load_json_from_s3(SANCTIONS_DIFFS_KEY)
+    old_list = history[-1]["sanctions"] if history else []
+
+    additions, deletions = compute_diff(new_list, old_list)
+
+    history.append({
+        "timestamp": datetime.utcnow().isoformat(),
+        "sanctions": new_list
+    })
+    history = history[-7:]
+
+    diffs.append({
+        "timestamp": datetime.utcnow().isoformat(),
+        "additions": additions,
+        "deletions": deletions
+    })
+    diffs = diffs[-7:]
+
+    save_json_to_s3(history, SANCTIONS_HISTORY_KEY)
+    save_json_to_s3(diffs, SANCTIONS_DIFFS_KEY)
+
+    return diffs
+
+def generate_chart(diffs):
+    dates = [d['timestamp'][:10] for d in diffs]
+    additions = [len(d['additions']) for d in diffs]
+    deletions = [len(d['deletions']) for d in diffs]
+
+    plt.figure(figsize=(8, 4))
+    plt.bar(dates, additions, color='green', label='Additions')
+    plt.bar(dates, deletions, color='red', label='Deletions', bottom=additions)
+    plt.xlabel('Date')
+    plt.ylabel('Count')
+    plt.title('Sanctions List Changes (Last 7 Lookups)')
+    plt.legend()
+    plt.tight_layout()
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+    plt.close()
+    return buf
 
 def handler(event, context):
     start = time.time()
@@ -83,15 +170,20 @@ def handler(event, context):
 
     save_to_s3_json(current_list)
 
+    # --- New: update history/diffs and generate chart ---
+    diffs = update_history_and_diffs(current_list)
+    chart_buf = generate_chart(diffs)
     duration = time.time() - start
 
-    notify_slack(len(current_list), delta, duration)
+    # Notify Slack with chart (chart will be posted as a reply to the message)
+    notify_slack(len(current_list), delta, duration, chart_buf=chart_buf)
 
     return {
         "statusCode": 200,
         "body": json.dumps({
             "added": len(delta["added"]),
             "removed": len(delta["removed"]),
-            "duration": duration
+            "duration": duration,
+            "message": "Sanctions update processed and chart sent to Slack."
         })
     }
