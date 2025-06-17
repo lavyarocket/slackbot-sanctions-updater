@@ -118,6 +118,7 @@ def save_json_to_s3(data, key):
 
 def update_history_and_diffs(delta):
 
+    diffs = load_json_from_s3(SANCTIONS_DIFFS_KEY)
     # Compute additions and deletions
     additions, deletions = len(delta["added"]), len(delta["removed"])
 
