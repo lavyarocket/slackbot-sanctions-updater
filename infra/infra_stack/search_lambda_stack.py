@@ -5,6 +5,8 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_apigateway as apigw,
     aws_iam as iam,
+    aws_stepfunctions as sfn,
+    aws_stepfunctions_tasks as tasks
 )
 from constructs import Construct
 import os
@@ -29,6 +31,33 @@ class CheckSdnStack(Stack):
         # Grant permissions to the Lambda function to read from the S3 bucket
         s3_bucket.grant_read_write(self.lambda_fn)
 
+        step_task = tasks.LambdaInvoke(
+            self, "InvokeSanctionsLambda",
+            lambda_function=self.lambda_fn,
+            output_path="$.Payload"
+        )
+
+        state_machine = sfn.StateMachine(
+            self, "SanctionsStepFunction",
+            definition_body=sfn.DefinitionBody.from_chainable(step_task),
+            timeout=Duration.minutes(10)
+        )
+
+        trigger_lambda = _lambda.Function(
+            self, "TriggerSanctionsWorkflow",
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            handler="trigger_lambda.handler",
+            code=_lambda.Code.from_asset(
+            os.path.join(os.path.dirname(__file__), "../../search_lambda")
+            ),
+            environment={
+                "STATE_MACHINE_ARN": state_machine.state_machine_arn
+            },
+            timeout=Duration.seconds(10),
+        )
+        state_machine.grant_start_execution(trigger_lambda)
+
+
         # API Gateway endpoint for Slack slash command
         api = apigw.RestApi(self, "CheckSdnApi",
             rest_api_name="Check SDN Service",
@@ -38,5 +67,5 @@ class CheckSdnStack(Stack):
         check_sdn_resource = api.root.add_resource("check_sdn")
         check_sdn_resource.add_method(
             "POST",
-            apigw.LambdaIntegration(self.lambda_fn)
+            apigw.LambdaIntegration(trigger_lambda)
         )
