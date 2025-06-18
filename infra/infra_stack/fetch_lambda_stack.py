@@ -6,6 +6,8 @@ from aws_cdk import (
     aws_iam as iam,
     aws_events as events,
     aws_events_targets as targets,
+    aws_stepfunctions as sfn,
+    aws_stepfunctions_tasks as tasks
 )
 from constructs import Construct
 import os
@@ -66,14 +68,36 @@ class LambdaStack(Stack):
             resources=["*"]
         ))
 
+        step_task = tasks.LambdaInvoke(
+            self, "InvokeSanctionsLambda",
+            lambda_function=self.lambda_fn,
+            output_path="$.Payload"
+        )
+
+        state_machine = sfn.StateMachine(
+            self, "SanctionsStepFunction",
+            definition=step_task,
+            timeout=Duration.minutes(10)
+        )
+
+        trigger_lambda = _lambda.Function(
+            self, "TriggerSanctionsWorkflow",
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            handler="trigger_lambda.handler",
+            code=_lambda.Code.from_asset("../../fetch_lambda"),
+            environment={
+                "STATE_MACHINE_ARN": state_machine.state_machine_arn
+            },
+            timeout=Duration.seconds(10),
+        )
+        state_machine.grant_start_execution(trigger_lambda)
+
         # EventBridge trigger: run at 8am, 4pm, and 11pm PDT (which is 15, 23, and 6 UTC)
         rule = events.Rule(self, "ThreeTimesDailySDNTrigger",
             schedule=events.Schedule.cron(minute="0", hour="15,23,6")  # UTC times
         )
         rule.add_target(targets.LambdaFunction(self.lambda_fn))
-        
-        
-        # Create an API Gateway with a /trigger resource that invokes the Lambda
+
         api = apigateway.RestApi(
             self, "SDNSyncApiGateway",
             rest_api_name="SDNSyncApi"
@@ -81,6 +105,7 @@ class LambdaStack(Stack):
 
         trigger_resource = api.root.add_resource("trigger")
         trigger_resource.add_method(
-            "POST",  # Slack slash commands send POST requests
-            apigateway.LambdaIntegration(self.lambda_fn)
+            "POST",
+            apigateway.LambdaIntegration(trigger_lambda)
         )
+        
