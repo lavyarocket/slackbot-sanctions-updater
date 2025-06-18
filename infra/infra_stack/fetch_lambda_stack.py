@@ -76,7 +76,7 @@ class LambdaStack(Stack):
 
         state_machine = sfn.StateMachine(
             self, "SanctionsStepFunction",
-            definition=step_task,
+            definition_body=sfn.DefinitionBody.from_chainable(step_task),
             timeout=Duration.minutes(10)
         )
 
@@ -84,7 +84,9 @@ class LambdaStack(Stack):
             self, "TriggerSanctionsWorkflow",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="trigger_lambda.handler",
-            code=_lambda.Code.from_asset("../../fetch_lambda"),
+            code=_lambda.Code.from_asset(
+            os.path.join(os.path.dirname(__file__), "../../fetch_lambda")
+            ),
             environment={
                 "STATE_MACHINE_ARN": state_machine.state_machine_arn
             },
