@@ -2,6 +2,7 @@ import os
 import json
 import urllib.parse
 import boto3
+import requests
 
 SDN_BUCKET = os.environ.get("SDN_BUCKET")  # Set in Lambda environment
 SDN_KEY = os.environ.get("SDN_KEY")        # Set in Lambda environment
@@ -53,34 +54,16 @@ def format_slack_blocks(results, query):
     return blocks
 
 def handler(event, context):
-    # Slack sends x-www-form-urlencoded
-    body = event.get("body", "")
-    params = urllib.parse.parse_qs(body)
-    text = params.get("text", [""])[0].strip()
-
-    if not text:
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "response_type": "ephemeral",
-                "blocks": [{
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": "Please provide a name to check. Usage: `/check_sdn <name>`"
-                    }
-                }]
-            })
-        }
+    query = event["query"]
+    response_url = event["response_url"]
 
     sdn_list = load_sdn_list()
-    results = search_sdn(text, sdn_list)
-    blocks = format_slack_blocks(results, text)
+    results = search_sdn(query, sdn_list)
+    blocks = format_slack_blocks(results, query)
 
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "response_type": "in_channel" if results else "ephemeral",
-            "blocks": blocks
-        })
-    }
+    requests.post(response_url, json={
+        "response_type": "in_channel" if results else "ephemeral",
+        "blocks": blocks
+    })
+
+    return {"status": "posted to slack"}
