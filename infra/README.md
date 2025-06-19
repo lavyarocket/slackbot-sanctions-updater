@@ -1,58 +1,27 @@
+# Infra Folder
 
-# Welcome to your CDK Python project!
+This folder contains the AWS CDK (Cloud Development Kit) code that defines and deploys all infrastructure for the Slackbot Sanctions Updater project.
 
-This is a blank project for CDK development with Python.
+## Stacks Overview
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+- **Fetch Lambda Stack**: Provisions the Lambda function, IAM roles, and scheduling resources for downloading and processing the OFAC SDN list.
+- **Search Lambda Stack**: Provisions the Lambda function, API Gateway, and Step Function for handling Slack slash command requests and searching the SDN list.
+- **S3 Bucket Stack**: Creates the S3 bucket used to store the latest and historical SDN data.
+- **Secrets Manager Integration**: Grants Lambda functions permission to securely retrieve the Slack bot token from AWS Secrets Manager.
 
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
+## Structure
 
-To manually create a virtualenv on MacOS and Linux:
+- `infra_stack/`: Contains the CDK stack definitions for each component.
+- `app.py`: Entry point for the CDK application.
 
-```
-$ python3 -m venv .venv
-```
+## Usage
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+To deploy or update the infrastructure, use the CDK CLI from this directory:
 
-```
-$ source .venv/bin/activate
-```
-
-If you are a Windows platform, you would activate the virtualenv like this:
-
-```
-% .venv\Scripts\activate.bat
+```sh
+cd infra
+pip install -r requirements.txt
+cdk deploy
 ```
 
-Once the virtualenv is activated, you can install the required dependencies.
-
-```
-$ pip install -r requirements.txt
-```
-
-At this point you can now synthesize the CloudFormation template for this code.
-
-```
-$ cdk synth
-```
-
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
-
-## Useful commands
-
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
-
-Enjoy!
+For more details on CDK commands, see the [AWS CDK documentation](https://docs.aws.amazon.com/cdk/latest/guide/cli.html).

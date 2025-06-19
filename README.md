@@ -83,7 +83,7 @@ CI/CD is managed by GitHub Actions ([`.github/workflows/deploy.yaml`](.github/wo
 
 ### 1️⃣ Scheduled Fetching & Slack Notification
 
-- 🕒 Triggered 3× daily
+- 🕒 Triggered 3× daily or can be triggered manually by `/trigger` in Slack
 - 📥 Downloads new SDN list → compares with previous → saves to S3
 - 📢 Posts summary + stats + chart to Slack
 
