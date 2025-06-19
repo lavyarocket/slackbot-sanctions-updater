@@ -118,6 +118,7 @@ CI/CD is managed by GitHub Actions ([`.github/workflows/deploy.yaml`](.github/wo
 
 ## 🔮 Future Enhancements
 
+- 🌍 Support multiple sanctions lists (e.g., EU, UN, UK, Canada) for broader compliance coverage
 - ✨ Add fuzzy search, pagination, advanced filters to Slack command
 - 📄 Show full SDN metadata in search results
 - 🚀 Publish for public use (e.g., via Slack App Directory)
