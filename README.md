@@ -16,7 +16,7 @@ This project is a proof-of-concept Slackbot and AWS-based automation for monitor
 
 ## 🎥 Demo
 
-*Loom video demo: (add your Loom link here)*
+*[Loom Video Demo](https://www.loom.com/share/6068dbc273fb48a08e3f91711098e5cc?sid=a992f7b7-97fc-4d98-a6ae-cc2e9699e930)
 
 ---
 
