@@ -132,6 +132,6 @@ This project is for internal demo and compliance prototyping. Not currently open
 
 ---
 
-🙋‍♂️ *Questions, feedback, or want a demo? Ping the maintainer!*
+🙋‍♂️ *Questions, feedback, or want a demo? Ping Lavya! (lavyarocket@gmail.com)*
 
 ---
