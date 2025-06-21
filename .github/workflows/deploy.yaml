@@ -1,9 +1,5 @@
 name: Deploy with CDK
 
-on:
-  push:
-    branches:
-      - master
 
 jobs:
   deploy:
